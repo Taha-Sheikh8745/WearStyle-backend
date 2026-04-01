@@ -38,16 +38,17 @@ export const createOrder = async (req, res, next) => {
 
         // Send Order Confirmation Email
         try {
-            const emailItems = items.map(item => `- ${item.title} (x${item.quantity}) - $${item.price}`).join('\n');
+            const formattedPaymentMethod = (paymentMethod || 'cod').toUpperCase();
+            const emailItems = items.map(item => `- ${item.title} (x${item.quantity}) - Rs. ${item.price}`).join('\n');
             const message = `
 Hello ${shippingAddress.name},
 
-Thank you for your order at WearStylewithImtisall! Your order has been successfully placed and is being processed.
+Thank you for your order at WearStyle! Your order has been successfully placed and is being processed.
 
 ---
 Order ID: ${order.orderId}
-Total Amount: $${totalPrice.toFixed(2)}
-Payment Method: ${paymentMethod.toUpperCase()}
+Total Amount: Rs. ${totalPrice.toFixed(2)}
+Payment Method: ${formattedPaymentMethod}
 
 Items Ordered:
 ${emailItems}
@@ -59,7 +60,7 @@ ${shippingAddress.street}, ${shippingAddress.city}, ${shippingAddress.state}, ${
 We will notify you once your order is shipped.
 
 Best regards,
-The WearStylewithImtisall Team
+The WearStyle Team
 `;
             await sendEmail({
                 email: req.user.email,
@@ -67,12 +68,20 @@ The WearStylewithImtisall Team
                 message: message
             });
         } catch (emailErr) {
-            console.error('Order confirmation email failed:', emailErr.message);
+            console.error('[Email Error]: Order confirmation email failed:', emailErr.message);
             // Don't fail the order if email fails
         }
 
         res.status(201).json({ success: true, order });
-    } catch (err) { next(err); }
+    } catch (err) { 
+        console.error('[Order Error]: Failed to create order:', {
+            error: err.message,
+            stack: err.stack,
+            body: req.body,
+            user: req.user?._id
+        });
+        next(err); 
+    }
 };
 
 // @desc   Get logged in user orders

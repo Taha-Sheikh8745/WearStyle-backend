@@ -11,21 +11,21 @@ dns.setDefaultResultOrder("ipv4first");
 
 const DB = process.env.DATABASE;
 
-// Cache connection state to reuse across serverless function invocations
-let isConnected = false;
-
 export default async function handler(req, res) {
-    if (!isConnected) {
+    // Check if we have a connection and if it's already connecting or connected
+    if (mongoose.connection.readyState !== 1) {
         try {
-            await mongoose.connect(DB);
-            isConnected = true;
-            console.log('MongoDB connection successful (Serverless Environment)!');
+            console.log('Attaching new MongoDB connection (Serverless Environment)...');
+            await mongoose.connect(DB, {
+                serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of default 30s
+            });
+            console.log('MongoDB connection successful!');
         } catch (err) {
             console.error('MongoDB connection error:', err);
             return res.status(500).json({ 
                 success: false, 
                 message: 'Internal Server Error: DB Connection Failed', 
-                error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+                error: err.message
             });
         }
     }
