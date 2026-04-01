@@ -1,0 +1,154 @@
+import Order from '../models/Order.js';
+import Product from '../models/Product.js';
+import sendEmail from '../utils/sendEmail.js';
+import User from '../models/User.js';
+import mongoose from 'mongoose';
+
+// @desc   Create new order
+// @route  POST /api/orders
+export const createOrder = async (req, res, next) => {
+    try {
+        const { items, shippingAddress, paymentMethod } = req.body;
+        if (!items || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'No order items.' });
+        }
+
+        // Validate that all items contain valid Mongoose ObjectIds
+        for (const item of items) {
+            if (!mongoose.Types.ObjectId.isValid(item.product)) {
+                return res.status(400).json({ success: false, message: 'Invalid product ID detected in your cart. This could be leftover from an old session. Please clear your cart and try again.' });
+            }
+        }
+
+        const itemsPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        const shippingPrice = itemsPrice > 100 ? 0 : 15;
+        const taxPrice = parseFloat((0.05 * itemsPrice).toFixed(2));
+        const totalPrice = itemsPrice + shippingPrice + taxPrice;
+
+        const order = await Order.create({
+            user: req.user._id,
+            items,
+            shippingAddress,
+            paymentMethod: paymentMethod || 'cod',
+            itemsPrice,
+            shippingPrice,
+            taxPrice,
+            totalPrice,
+        });
+
+        // Send Order Confirmation Email
+        try {
+            const emailItems = items.map(item => `- ${item.title} (x${item.quantity}) - $${item.price}`).join('\n');
+            const message = `
+Hello ${shippingAddress.name},
+
+Thank you for your order at WearStylewithImtisall! Your order has been successfully placed and is being processed.
+
+---
+Order ID: ${order.orderId}
+Total Amount: $${totalPrice.toFixed(2)}
+Payment Method: ${paymentMethod.toUpperCase()}
+
+Items Ordered:
+${emailItems}
+
+Shipping To:
+${shippingAddress.street}, ${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.zipCode}, ${shippingAddress.country}
+---
+
+We will notify you once your order is shipped.
+
+Best regards,
+The WearStylewithImtisall Team
+`;
+            await sendEmail({
+                email: req.user.email,
+                subject: `Order Confirmation - ${order.orderId}`,
+                message: message
+            });
+        } catch (emailErr) {
+            console.error('Order confirmation email failed:', emailErr.message);
+            // Don't fail the order if email fails
+        }
+
+        res.status(201).json({ success: true, order });
+    } catch (err) { next(err); }
+};
+
+// @desc   Get logged in user orders
+// @route  GET /api/orders/mine
+export const getMyOrders = async (req, res, next) => {
+    try {
+        const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+        res.json({ success: true, orders });
+    } catch (err) { next(err); }
+};
+
+// @desc   Get order by ID
+// @route  GET /api/orders/:id
+export const getOrderById = async (req, res, next) => {
+    try {
+        const order = await Order.findById(req.params.id).populate('user', 'name email');
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+        if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Access denied.' });
+        }
+        res.json({ success: true, order });
+    } catch (err) { next(err); }
+};
+
+// @desc   Update order status (Admin)
+// @route  PUT /api/orders/:id/status
+export const updateOrderStatus = async (req, res, next) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+        order.orderStatus = req.body.orderStatus || order.orderStatus;
+        if (req.body.orderStatus === 'Delivered') order.deliveredAt = Date.now();
+        await order.save();
+        res.json({ success: true, order });
+    } catch (err) { next(err); }
+};
+
+// @desc   Get all orders (Admin)
+// @route  GET /api/orders
+export const getAllOrders = async (req, res, next) => {
+    try {
+        const { page = 1, limit = 20, status } = req.query;
+        const query = status ? { orderStatus: status } : {};
+        const total = await Order.countDocuments(query);
+        const orders = await Order.find(query)
+            .populate('user', 'name email')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(Number(limit));
+        res.json({ success: true, orders, total, pages: Math.ceil(total / limit) });
+    } catch (err) { next(err); }
+};
+
+// @desc   Get sales analytics (Admin)
+// @route  GET /api/orders/analytics
+export const getAnalytics = async (req, res, next) => {
+    try {
+        const totalOrders = await Order.countDocuments();
+        const totalRevenueResult = await Order.aggregate([
+            { $match: { paymentStatus: 'paid' } },
+            { $group: { _id: null, total: { $sum: '$totalPrice' } } },
+        ]);
+        const totalRevenue = totalRevenueResult[0]?.total || 0;
+
+        const monthlySales = await Order.aggregate([
+            {
+                $group: {
+                    _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } },
+                    revenue: { $sum: '$totalPrice' },
+                    orders: { $sum: 1 },
+                },
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } },
+            { $limit: 12 },
+        ]);
+
+        res.json({ success: true, totalOrders, totalRevenue, monthlySales });
+    } catch (err) { next(err); }
+};
