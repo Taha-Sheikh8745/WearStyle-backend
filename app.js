@@ -8,18 +8,18 @@ import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
-
 const app = express();
 
 // Middleware
 // CORS Configuration
+
 const allowedOrigins = [
     process.env.CLIENT_URL,
     'http://localhost:5173', // Vite default
     'https://wear-style-frontend.vercel.app' // Example production URL (User should update this)
 ].filter(Boolean);
 
-app.use(cors({ 
+app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
