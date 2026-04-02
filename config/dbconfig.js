@@ -16,6 +16,11 @@ if (!cached) {
 }
 
 async function connectDB() {
+  const DB = process.env.DATABASE;
+  if (!DB) {
+    throw new Error('DATABASE environment variable is not set. Add it in Vercel → Settings → Environment Variables.');
+  }
+
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
@@ -25,7 +30,7 @@ async function connectDB() {
       socketTimeoutMS: 45000,
     };
 
-    cached.promise = mongoose.connect(process.env.DATABASE, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(DB, opts).then((mongoose) => {
       console.log('MongoDB Connected successfully!');
       return mongoose;
     }).catch((err) => {

@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import morgan from 'morgan';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
