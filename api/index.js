@@ -4,69 +4,56 @@ dotenv.config({ quiet: true });
 import mongoose from 'mongoose';
 import app from "../app.js";
 import dns from "dns";
-import User from "../models/User.js";
 
-// Standard fix for MongoDB Atlas node 18+ IPv6 issues
-dns.setDefaultResultOrder("ipv4first");
+// Standard fix for MongoDB Atlas Node.js DNS resolution issues
+try {
+    dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+    dns.setDefaultResultOrder("ipv4first");
+} catch (dnsErr) {
+    console.warn('DNS override failed, using default servers.');
+}
 
 const DB = process.env.DATABASE;
 
 // Global cached connection promise
 let cachedConnection = null;
 
-const initAdmin = async () => {
-    try {
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPassword = process.env.ADMIN_PASSWORD;
-
-        if (!adminEmail || !adminPassword) {
-            console.log('Admin credentials not found in env, skipping init.');
-            return;
-        }
-
-        const user = await User.findOne({ email: adminEmail });
-        if (!user) {
-            console.log(`Creating initial admin account: ${adminEmail}`);
-            await User.create({
-                firstName: 'Admin',
-                lastName: 'Owner',
-                email: adminEmail,
-                password: adminPassword,
-                role: 'admin',
-                isVerified: true
-            });
-        }
-    } catch (err) {
-        console.error('Failed to initialize admin in serverless function:', err.message);
-    }
-};
-
 export default async function handler(req, res) {
+    // 1. Check for basic connectivity setup
+    if (!DB) {
+        console.error('CRITICAL: DATABASE Environment Variable is missing.');
+        return res.status(500).json({
+            success: false,
+            message: 'DATABASE URL is missing! Add it in Vercel Dashboard → Settings → Env Variables.'
+        });
+    }
+
     if (!cachedConnection) {
-        console.log('Creating new MongoDB connection (Singleton Pattern)...');
+        console.log('Connecting to MongoDB Atlas...');
         cachedConnection = mongoose.connect(DB, {
-            serverSelectionTimeoutMS: 10000, // 10s timeout for cold starts
-        }).then(async (conn) => {
+            serverSelectionTimeoutMS: 5000, // 5s timeout to catch "IP Whitelist" errors fast
+            socketTimeoutMS: 45000,
+        }).then((conn) => {
             console.log('MongoDB connection successful!');
-            await initAdmin(); // Initialize admin on cold start
             return conn;
         }).catch((err) => {
-            console.error('MongoDB connection error:', err);
-            cachedConnection = null; // Reset if it fails so next request can retry
+            console.error('MongoDB connection error:', err.message);
+            cachedConnection = null; // Let the next request try again
             throw err;
         });
     }
 
     try {
         await cachedConnection;
+        // Proceed to express app
+        return app(req, res);
     } catch (err) {
+        console.error('Vercel Function Error Trace:', err.message);
         return res.status(500).json({ 
             success: false, 
-            message: 'Internal Server Error: DB Connection Failed', 
-            error: err.message
+            message: 'Database Connection Error', 
+            error: err.message,
+            tip: 'Check your MongoDB Atlas "Network Access" and ensure 0.0.0.0/0 is whitelisted.'
         });
     }
-
-    // Let the Express app handle the request mapping natively
-    return app(req, res);
 }
