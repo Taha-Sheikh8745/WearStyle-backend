@@ -1,26 +1,14 @@
 import './config/env.js';
-import mongoose from 'mongoose';
 import app from "./app.js";
-import dns from "dns"
 import User from "./models/User.js";
+import connectDB from './config/dbconfig.js';
 
-dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"])
-dns.setDefaultResultOrder("ipv4first")
-
-
-const DB = process.env.DATABASE;
-
-mongoose
-    .connect(DB)
+connectDB()
     .then(async () => {
-        console.log('DB connection successful!');
         await initAdmin();
     })
     .catch((err) => {
-        console.error('DB connection error:', err);
-        // Do not fail hard if script is being run for different purposes, 
-        // but for server.js we usually want it to stay alive if possible.
-        // process.exit(1);
+        console.error('Initial DB connection failed:', err.message);
     });
 
 const initAdmin = async () => {
