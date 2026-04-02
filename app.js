@@ -16,7 +16,7 @@ const app = express();
 const allowedOrigins = [
     process.env.CLIENT_URL,
     'http://localhost:5173', // Vite default
-    'https://wear-style-frontend.vercel.app' // Example production URL (User should update this)
+    'https://wear-style-frontend.vercel.app' // Example production URL
 ].filter(Boolean);
 
 app.use(cors({

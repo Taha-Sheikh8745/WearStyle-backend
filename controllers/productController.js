@@ -1,5 +1,7 @@
 import Product from '../models/Product.js';
+import Category from '../models/Category.js';
 import cloudinary from '../config/cloudinary.js';
+import mongoose from 'mongoose';
 
 // @desc   Get all products (with filters, search, pagination)
 // @route  GET /api/products
@@ -11,7 +13,6 @@ export const getProducts = async (req, res, next) => {
 
         if (category) {
             // Find if this category has sub-categories
-            const Category = mongoose.model('Category');
             const subCats = await Category.find({ parent: category }).select('_id');
             if (subCats.length > 0) {
                 const catIds = [category, ...subCats.map(c => c._id)];
