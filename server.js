@@ -2,6 +2,14 @@ import './config/env.js';
 import app from "./app.js";
 import User from "./models/User.js";
 import connectDB from './config/dbconfig.js';
+import fs from 'fs';
+
+// Ensure uploads/ directory exists for Multer
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads', { recursive: true });
+    console.log('Created uploads/ directory');
+}
+
 
 connectDB()
     .then(async () => {

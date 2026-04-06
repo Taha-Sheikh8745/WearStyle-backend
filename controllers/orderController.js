@@ -21,7 +21,7 @@ export const createOrder = async (req, res, next) => {
         }
 
         const itemsPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const shippingPrice = itemsPrice > 100 ? 0 : 15;
+        const shippingPrice = 350;
         const taxPrice = parseFloat((0.05 * itemsPrice).toFixed(2));
         const totalPrice = itemsPrice + shippingPrice + taxPrice;
 

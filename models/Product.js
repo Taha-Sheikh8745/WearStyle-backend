@@ -16,7 +16,7 @@ const productSchema = new mongoose.Schema(
         description: { type: String, required: true },
         price: { type: Number, required: true, min: 0 },
         comparePrice: { type: Number, default: 0 },
-        category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+        category: { type: String, required: true },
         images: [{ public_id: String, url: String }],
         sizes: [{ type: String, enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Free Size'] }],
         stock: { type: Number, default: 0 },

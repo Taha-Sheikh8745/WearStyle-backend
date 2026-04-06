@@ -6,14 +6,29 @@ import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import categoryRoutes from './routes/categoryRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 const app = express();
 
 // Middleware
 // CORS Configuration
 
+const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'http://localhost:5173',
+    'https://wear-style-frontend.vercel.app'
+].filter(Boolean);
+
 app.use(cors({
-    origin: "https://wear-style-frontend.vercel.app",
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        
+        // Check if origin is allowed or if it's a Vercel preview branch
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 
@@ -25,7 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/categories', categoryRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Health check
 app.get('/', (req, res) => res.json({ message: 'Wear Style API Running' }));

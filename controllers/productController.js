@@ -1,5 +1,4 @@
 import Product from '../models/Product.js';
-import Category from '../models/Category.js';
 import cloudinary from '../config/cloudinary.js';
 import mongoose from 'mongoose';
 
@@ -12,14 +11,7 @@ export const getProducts = async (req, res, next) => {
         if (keyword) query.title = { $regex: keyword, $options: 'i' };
 
         if (category) {
-            // Find if this category has sub-categories
-            const subCats = await Category.find({ parent: category }).select('_id');
-            if (subCats.length > 0) {
-                const catIds = [category, ...subCats.map(c => c._id)];
-                query.category = { $in: catIds };
-            } else {
-                query.category = category;
-            }
+            query.category = category;
         }
         if (minPrice || maxPrice) {
             query.price = {};
@@ -38,7 +30,6 @@ export const getProducts = async (req, res, next) => {
 
         const total = await Product.countDocuments(query);
         const products = await Product.find(query)
-            .populate('category', 'name slug')
             .sort(sortBy)
             .skip((page - 1) * limit)
             .limit(Number(limit));
@@ -58,7 +49,6 @@ export const getProducts = async (req, res, next) => {
 export const getProductById = async (req, res, next) => {
     try {
         const product = await Product.findById(req.params.id)
-            .populate('category', 'name slug')
             .populate('reviews.user', 'name avatar');
         if (!product) return res.status(404).json({ success: false, message: 'Product not found.' });
         res.json({ success: true, product });
@@ -69,23 +59,49 @@ export const getProductById = async (req, res, next) => {
 // @route  POST /api/products
 export const createProduct = async (req, res, next) => {
     try {
+        console.log('[createProduct] Body:', req.body);
+        console.log('[createProduct] Files:', req.files?.map(f => f.originalname));
+
         const { title, description, price, comparePrice, category, sizes, stock, isFeatured, tags } = req.body;
+
+        if (!title || !description || !price || !category) {
+            return res.status(400).json({ success: false, message: 'Title, description, price, and category are required.' });
+        }
+
         const images = [];
         if (req.files && req.files.length > 0) {
             for (const file of req.files) {
-                const result = await cloudinary.uploader.upload(file.path, { folder: 'noorluxe/products' });
-                images.push({ public_id: result.public_id, url: result.secure_url });
+                try {
+                    const result = await cloudinary.uploader.upload(file.path, {
+                        folder: 'noorluxe/products',
+                        resource_type: 'image',
+                    });
+                    images.push({ public_id: result.public_id, url: result.secure_url });
+                } catch (cloudErr) {
+                    console.error('[createProduct] Cloudinary upload error:', cloudErr.message);
+                    return res.status(500).json({ success: false, message: `Image upload failed: ${cloudErr.message}` });
+                }
             }
         }
+
+        const parsedSizes = typeof sizes === 'string' ? JSON.parse(sizes) : (sizes || []);
+        const parsedTags = typeof tags === 'string' ? JSON.parse(tags) : (tags || []);
+
         const product = await Product.create({
             title, description, price, comparePrice, category,
-            sizes: typeof sizes === 'string' ? JSON.parse(sizes) : (sizes || []),
-            tags: typeof tags === 'string' ? JSON.parse(tags) : (tags || []),
+            sizes: parsedSizes,
+            tags: parsedTags,
             stock, isFeatured, images,
         });
+
+        console.log('[createProduct] Product created:', product._id);
         res.status(201).json({ success: true, product });
-    } catch (err) { next(err); }
+    } catch (err) {
+        console.error('[createProduct] Error:', err.message, err.stack);
+        next(err);
+    }
 };
+
 
 // @desc   Update product (Admin)
 // @route  PUT /api/products/:id
