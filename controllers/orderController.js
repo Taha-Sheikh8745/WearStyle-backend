@@ -1,7 +1,7 @@
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import sendEmail from '../utils/sendEmail.js';
-import User from '../models/User.js';
+// import User from '../models/User.js';
 import mongoose from 'mongoose';
 
 // @desc   Create new order
@@ -26,7 +26,6 @@ export const createOrder = async (req, res, next) => {
         const totalPrice = itemsPrice + shippingPrice + taxPrice;
 
         const order = await Order.create({
-            user: req.user._id,
             items,
             shippingAddress,
             paymentMethod: paymentMethod || 'cod',
@@ -41,12 +40,12 @@ export const createOrder = async (req, res, next) => {
             const formattedPaymentMethod = (paymentMethod || 'cod').toUpperCase();
             const emailItems = items.map(item => `- ${item.title} (x${item.quantity}) - Rs. ${item.price}`).join('\n');
             const message = `
-Hello ${shippingAddress.name},
+Hello ${shippingAddress.name || 'Valued Customer'},
 
-Thank you for your order at WearStyle! Your order has been successfully placed and is being processed.
+Thank you for your order at WearStylewithImtisall! Your order has been successfully placed and is being processed.
 
 ---
-Order ID: ${order.orderId}
+Order ID: ${order.orderId || order._id}
 Total Amount: Rs. ${totalPrice.toFixed(2)}
 Payment Method: ${formattedPaymentMethod}
 
@@ -54,7 +53,7 @@ Items Ordered:
 ${emailItems}
 
 Shipping To:
-${shippingAddress.street}, ${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.zipCode}, ${shippingAddress.country}
+${shippingAddress.street || 'N/A'}, ${shippingAddress.city || 'N/A'}, ${shippingAddress.state || ''} ${shippingAddress.zipCode || ''}, ${shippingAddress.country || 'Pakistan'}
 ---
 
 We will notify you once your order is shipped.
@@ -63,13 +62,12 @@ Best regards,
 The WearStyle Team
 `;
             await sendEmail({
-                email: req.user.email,
-                subject: `Order Confirmation - ${order.orderId}`,
+                email: shippingAddress.email,
+                subject: `Order Confirmation - ${order.orderId || order._id}`,
                 message: message
             });
         } catch (emailErr) {
-            console.error('[Email Error]: Order confirmation email failed:', emailErr.message);
-            // Don't fail the order if email fails
+            console.warn('[Email Warning]: Could not send confirmation email via SMTP. It has been logged to backend/logs/email_failures.log.');
         }
 
         res.status(201).json({ success: true, order });
@@ -77,31 +75,19 @@ The WearStyle Team
         console.error('[Order Error]: Failed to create order:', {
             error: err.message,
             stack: err.stack,
-            body: req.body,
-            user: req.user?._id
+            body: req.body
         });
         next(err); 
     }
-};
-
-// @desc   Get logged in user orders
-// @route  GET /api/orders/mine
-export const getMyOrders = async (req, res, next) => {
-    try {
-        const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
-        res.json({ success: true, orders });
-    } catch (err) { next(err); }
 };
 
 // @desc   Get order by ID
 // @route  GET /api/orders/:id
 export const getOrderById = async (req, res, next) => {
     try {
-        const order = await Order.findById(req.params.id).populate('user', 'name email');
+        // user population removed
+        const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
-        if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Access denied.' });
-        }
         res.json({ success: true, order });
     } catch (err) { next(err); }
 };
@@ -127,7 +113,6 @@ export const getAllOrders = async (req, res, next) => {
         const query = status ? { orderStatus: status } : {};
         const total = await Order.countDocuments(query);
         const orders = await Order.find(query)
-            .populate('user', 'name email')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(Number(limit));

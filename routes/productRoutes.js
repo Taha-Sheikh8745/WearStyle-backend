@@ -5,7 +5,7 @@ import {
     getProducts, getProductById, createProduct,
     updateProduct, deleteProduct, addReview,
 } from '../controllers/productController.js';
-import { protect, adminOnly } from '../middleware/authMiddleware.js';
+import { adminAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -34,9 +34,9 @@ const upload = multer({
 
 router.get('/', getProducts);
 router.get('/:id', getProductById);
-router.post('/', protect, adminOnly, upload.array('images', 10), createProduct);
-router.put('/:id', protect, adminOnly, upload.array('images', 10), updateProduct);
-router.delete('/:id', protect, adminOnly, deleteProduct);
-router.post('/:id/reviews', protect, addReview);
+router.post('/', adminAuth, upload.array('images', 10), createProduct);
+router.put('/:id', adminAuth, upload.array('images', 10), updateProduct);
+router.delete('/:id', adminAuth, deleteProduct);
+router.post('/:id/reviews', addReview); // Public — no user auth
 
 export default router;

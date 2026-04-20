@@ -12,7 +12,7 @@ const orderItemSchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema(
     {
         orderId: { type: String, unique: true },
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+// User field removed as per guest-only checkout architecture
         items: [orderItemSchema],
         shippingAddress: {
             name: { type: String, required: true },
@@ -22,6 +22,7 @@ const orderSchema = new mongoose.Schema(
             zipCode: { type: String, required: true },
             country: { type: String, required: true },
             phone: String,
+            email: { type: String, required: true },
         },
         paymentMethod: { type: String, enum: ['stripe', 'paypal', 'cod'], default: 'cod' },
         paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },

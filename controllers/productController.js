@@ -48,8 +48,7 @@ export const getProducts = async (req, res, next) => {
 // @route  GET /api/products/:id
 export const getProductById = async (req, res, next) => {
     try {
-        const product = await Product.findById(req.params.id)
-            .populate('reviews.user', 'name avatar');
+        const product = await Product.findById(req.params.id);
         if (!product) return res.status(404).json({ success: false, message: 'Product not found.' });
         res.json({ success: true, product });
     } catch (err) { next(err); }
@@ -144,16 +143,17 @@ export const deleteProduct = async (req, res, next) => {
 // @route  POST /api/products/:id/reviews
 export const addReview = async (req, res, next) => {
     try {
-        const { rating, comment } = req.body;
+        const { rating, comment, name } = req.body;
         const product = await Product.findById(req.params.id);
         if (!product) return res.status(404).json({ success: false, message: 'Product not found.' });
-        const alreadyReviewed = product.reviews.find(
-            (r) => r.user.toString() === req.user._id.toString()
-        );
-        if (alreadyReviewed) {
-            return res.status(400).json({ success: false, message: 'You already reviewed this product.' });
-        }
-        product.reviews.push({ user: req.user._id, name: req.user.name, rating: Number(rating), comment });
+
+        const review = {
+            name: name || 'Anonymous Guest',
+            rating: Number(rating),
+            comment
+        };
+
+        product.reviews.push(review);
         product.updateRating();
         await product.save();
         res.status(201).json({ success: true, message: 'Review added.' });
