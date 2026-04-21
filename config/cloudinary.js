@@ -1,7 +1,12 @@
 import cloudinary from 'cloudinary';
 
-if (!process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_API_KEY === 'your_api_key') {
-    console.warn('WARNING: Cloudinary API Key is missing or using placeholder in development.');
+const requiredVars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
+const missingVars = requiredVars.filter(v => !process.env[v] || process.env[v] === 'your_' + v.toLowerCase());
+
+if (missingVars.length > 0) {
+    const errorMsg = `Missing Cloudinary environment variables: ${missingVars.join(', ')}. Please add them to your environment settings.`;
+    console.error(`[Cloudinary Config] ${errorMsg}`);
+    // We don't throw here to avoid crashing the whole server, but we log clearly.
 }
 
 cloudinary.v2.config({
