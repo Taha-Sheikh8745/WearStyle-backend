@@ -71,7 +71,11 @@ export const createProduct = async (req, res, next) => {
         if (req.files && req.files.length > 0) {
             for (const file of req.files) {
                 try {
-                    const result = await cloudinary.uploader.upload(file.path, {
+                    // Convert buffer to Data URI
+                    const b64 = Buffer.from(file.buffer).toString('base64');
+                    const dataURI = `data:${file.mimetype};base64,${b64}`;
+                    
+                    const result = await cloudinary.uploader.upload(dataURI, {
                         folder: 'noorluxe/products',
                         resource_type: 'image',
                     });
@@ -114,7 +118,11 @@ export const updateProduct = async (req, res, next) => {
         if (req.files && req.files.length > 0) {
             const newImages = [];
             for (const file of req.files) {
-                const result = await cloudinary.uploader.upload(file.path, { folder: 'noorluxe/products' });
+                const b64 = Buffer.from(file.buffer).toString('base64');
+                const dataURI = `data:${file.mimetype};base64,${b64}`;
+                const result = await cloudinary.uploader.upload(dataURI, { 
+                    folder: 'noorluxe/products' 
+                });
                 newImages.push({ public_id: result.public_id, url: result.secure_url });
             }
             updates.images = [...(product.images || []), ...newImages];
