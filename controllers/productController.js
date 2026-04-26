@@ -10,7 +10,7 @@ export const getProducts = async (req, res, next) => {
         const query = {};
         if (keyword) query.title = { $regex: keyword, $options: 'i' };
 
-        if (category) {
+        if (category && category !== 'new-arrival') {
             query.category = category;
         }
         if (minPrice || maxPrice) {
