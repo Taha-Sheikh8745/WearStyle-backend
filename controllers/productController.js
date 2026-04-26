@@ -11,7 +11,13 @@ export const getProducts = async (req, res, next) => {
         if (keyword) query.title = { $regex: keyword, $options: 'i' };
 
         if (category && category !== 'new-arrival') {
-            query.category = category;
+            if (category === 'unstitched') {
+                query.category = { $regex: '^unstitched', $options: 'i' };
+            } else if (category === 'pret-stitched') {
+                query.category = { $regex: '^pret', $options: 'i' };
+            } else {
+                query.category = category;
+            }
         }
         if (minPrice || maxPrice) {
             query.price = {};
