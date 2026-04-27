@@ -11,7 +11,9 @@ export const getProducts = async (req, res, next) => {
         if (keyword) query.title = { $regex: keyword, $options: 'i' };
 
         if (category && category !== 'new-arrival') {
-            if (category === 'unstitched') {
+            if (category === 'sale') {
+                query.$expr = { $gt: ["$comparePrice", "$price"] };
+            } else if (category === 'unstitched') {
                 query.category = { $regex: '^unstitched', $options: 'i' };
             } else if (category === 'pret-stitched') {
                 query.category = { $regex: '^pret', $options: 'i' };
