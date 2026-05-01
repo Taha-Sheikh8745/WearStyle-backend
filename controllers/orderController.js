@@ -66,6 +66,17 @@ The WearStyle Team
                 subject: `Order Confirmation - ${order.orderId || order._id}`,
                 message: message
             });
+
+            // Send Alert to Admin
+            try {
+                await sendEmail({
+                    email: 'Wearstylewithimtisall@gmail.com',
+                    subject: `New Order Placed - ${order.orderId || order._id}`,
+                    message: `A new order has been placed on the website.\n\nCustomer: ${shippingAddress.name}\nEmail: ${shippingAddress.email}\nPhone: ${shippingAddress.phone || 'N/A'}\n\n--- Order Details ---\nOrder ID: ${order.orderId || order._id}\nTotal Amount: Rs. ${totalPrice.toFixed(2)}\nPayment Method: ${formattedPaymentMethod}\n\nItems Ordered:\n${emailItems}\n\nShipping To:\n${shippingAddress.street || 'N/A'}, ${shippingAddress.city || 'N/A'}, ${shippingAddress.state || ''} ${shippingAddress.zipCode || ''}, ${shippingAddress.country || 'Pakistan'}`
+                });
+            } catch (adminErr) {
+                console.warn('[Email Warning]: Could not send admin order alert email via SMTP.');
+            }
         } catch (emailErr) {
             console.warn('[Email Warning]: Could not send confirmation email via SMTP. It has been logged to backend/logs/email_failures.log.');
         }
