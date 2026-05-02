@@ -3,12 +3,18 @@ import Product from '../models/Product.js';
 import sendEmail from '../utils/sendEmail.js';
 // import User from '../models/User.js';
 import mongoose from 'mongoose';
+import cloudinary from '../config/cloudinary.js';
 
 // @desc   Create new order
 // @route  POST /api/orders
 export const createOrder = async (req, res, next) => {
     try {
-        const { items, shippingAddress, paymentMethod } = req.body;
+        let { items, shippingAddress, paymentMethod } = req.body;
+        
+        // If items and shippingAddress are strings (from FormData), parse them
+        if (typeof items === 'string') items = JSON.parse(items);
+        if (typeof shippingAddress === 'string') shippingAddress = JSON.parse(shippingAddress);
+
         if (!items || items.length === 0) {
             return res.status(400).json({ success: false, message: 'No order items.' });
         }
@@ -25,10 +31,27 @@ export const createOrder = async (req, res, next) => {
         const taxPrice = parseFloat((0.05 * itemsPrice).toFixed(2));
         const totalPrice = itemsPrice + shippingPrice + taxPrice;
 
+        let paymentScreenshot = null;
+        if (req.file) {
+            try {
+                const b64 = Buffer.from(req.file.buffer).toString('base64');
+                const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+                const result = await cloudinary.uploader.upload(dataURI, {
+                    folder: 'noorluxe/orders',
+                    resource_type: 'image',
+                });
+                paymentScreenshot = result.secure_url;
+            } catch (cloudErr) {
+                console.error('[createOrder] Cloudinary upload error:', cloudErr.message);
+                return res.status(500).json({ success: false, message: `Image upload failed: ${cloudErr.message}` });
+            }
+        }
+
         const order = await Order.create({
             items,
             shippingAddress,
             paymentMethod: paymentMethod || 'cod',
+            paymentScreenshot,
             itemsPrice,
             shippingPrice,
             taxPrice,

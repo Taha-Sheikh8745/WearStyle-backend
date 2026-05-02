@@ -25,6 +25,7 @@ const orderSchema = new mongoose.Schema(
             email: { type: String, required: true },
         },
         paymentMethod: { type: String, enum: ['stripe', 'paypal', 'cod', 'easypaisa', 'jazzcash'], default: 'cod' },
+        paymentScreenshot: { type: String },
         paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
         paymentResult: { id: String, status: String, updateTime: String, email: String },
         itemsPrice: { type: Number, required: true },
