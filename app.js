@@ -14,17 +14,24 @@ const app = express();
 const allowedOrigins = [
     process.env.CLIENT_URL,
     'http://localhost:5173',
-    'https://wearstylewithimtisall.com/'
+    'https://wearstylewithimtisall.com'
 ].filter(Boolean);
 
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
 
-        // Check if origin is allowed or if it's a Vercel preview branch
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        // Normalize origin: remove trailing slash if present
+        const normalizedOrigin = origin.replace(/\/$/, '');
+        
+        const isAllowed = allowedOrigins.some(ao => ao.replace(/\/$/, '') === normalizedOrigin) 
+                         || normalizedOrigin.endsWith('.vercel.app')
+                         || normalizedOrigin.includes('wearstylewithimtisall.com');
+
+        if (isAllowed) {
             callback(null, true);
         } else {
+            console.warn(`CORS blocked for origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
