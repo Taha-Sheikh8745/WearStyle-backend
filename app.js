@@ -13,13 +13,13 @@ const app = express();
 const allowedOrigins = [
     process.env.CLIENT_URL,
     'http://localhost:5173',
-    'https://wear-style-frontend.vercel.app'
+    'https://wearstylewithimtisall.com/'
 ].filter(Boolean);
 
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
-        
+
         // Check if origin is allowed or if it's a Vercel preview branch
         if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
             callback(null, true);
@@ -39,7 +39,14 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Health check
-app.get('/', (req, res) => res.json({ message: 'Wear Style API Running' }));
+app.get('/', async (req, res) => {
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    res.json({ 
+        message: 'Wear Style API Running',
+        database: dbStatus,
+        version: '1.0.0'
+    });
+});
 
 // 404 Handler for undefined routes
 app.use((req, res, next) => {
