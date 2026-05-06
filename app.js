@@ -41,12 +41,37 @@ app.use('/api/contact', contactRoutes);
 
 // Health check
 app.get('/', async (req, res) => {
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    res.json({ 
-        message: 'Wear Style API Running',
-        database: dbStatus,
-        version: '1.0.0'
-    });
+    try {
+        const readyState = mongoose.connection.readyState;
+        const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+        
+        let dbPing = 'failed';
+        if (readyState === 1) {
+            // Try a quick ping/count to verify the connection is alive
+            await mongoose.connection.db.admin().ping();
+            dbPing = 'pong';
+        }
+
+        res.json({ 
+            message: 'Wear Style API Running',
+            database: {
+                status: states[readyState] || 'unknown',
+                readyState: readyState,
+                ping: dbPing
+            },
+            version: '1.0.1',
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.json({
+            message: 'Wear Style API Running',
+            database: {
+                status: 'error',
+                error: err.message
+            },
+            version: '1.0.1'
+        });
+    }
 });
 
 // 404 Handler for undefined routes
