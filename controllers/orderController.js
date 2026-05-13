@@ -180,3 +180,25 @@ export const getAnalytics = async (req, res, next) => {
         res.json({ success: true, totalOrders, totalRevenue, monthlySales });
     } catch (err) { next(err); }
 };
+
+// @desc   Delete order screenshot (Admin)
+// @route  DELETE /api/orders/:id/screenshot
+export const deleteOrderScreenshot = async (req, res, next) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+
+        // Optional: Extract public_id from Cloudinary URL and delete it
+        // if (order.paymentScreenshot) {
+        //     const urlParts = order.paymentScreenshot.split('/');
+        //     const fileName = urlParts[urlParts.length - 1].split('.')[0];
+        //     const folder = 'noorluxe/orders';
+        //     await cloudinary.uploader.destroy(`${folder}/${fileName}`);
+        // }
+
+        order.paymentScreenshot = null;
+        await order.save();
+
+        res.json({ success: true, message: 'Payment screenshot deleted successfully.' });
+    } catch (err) { next(err); }
+};

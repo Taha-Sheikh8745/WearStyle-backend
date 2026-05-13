@@ -2,6 +2,7 @@ import express from 'express';
 import {
     createOrder, getOrderById,
     updateOrderStatus, getAllOrders, getAnalytics,
+    deleteOrderScreenshot
 } from '../controllers/orderController.js';
 import { adminAuth } from '../middleware/authMiddleware.js';
 import multer from 'multer';
@@ -19,5 +20,6 @@ router.get('/analytics', adminAuth, getAnalytics);       // Admin only
 router.get('/', adminAuth, getAllOrders);                 // Admin only
 router.get('/:id', getOrderById);                        // Public — lookup by orderId
 router.put('/:id/status', adminAuth, updateOrderStatus); // Admin only
+router.delete('/:id/screenshot', adminAuth, deleteOrderScreenshot); // Admin only
 
 export default router;
